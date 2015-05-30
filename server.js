@@ -1,83 +1,12 @@
-// Nodetime
-if(process.env.NODETIME_ACCOUNT_KEY) {
-	require('nodetime').profile({
-		accountKey: process.env.NODETIME_ACCOUNT_KEY,
-		appName: 'ffc-blacklist-server' // optional
-	});
-} else {
-	console.log('Nodetime not configured');
-}
 
 var express = require('express'),
 	fs = require('fs'),
 	_ = require('underscore');
 
-var mongoose = require('mongoose');
-
 var app = express(),
 	http = require('http');
 	
-var blacklist = new Object();
 var port = Number(process.env.PORT || 5000);
-
-/*fs.readFile('./domains', 'utf8', function (err, data) {
-	if(err) {
-		return console.log(err);
-	}
-	var splittedList = data.split('\n');
-	var currentCategory = '';
-	splittedList.forEach(function (element) {
-		if(element.charAt(0) === '[' && element.charAt(element.length - 1) === ']') {
-			currentCategory = element.substr(1, element.length - 2);
-		} else {
-			blacklist[element] = currentCategory;
-		}
-	});
-	console.log('Blacklist length: ' + Object.keys(blacklist).length);
-});*/
-
-//database management
-var urlString = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://admin:mongohqheroku@lennon.mongohq.com:10001/app22466848';
-mongoose.connect(urlString, function (err, res) {
-	if (err) {
-		console.log ('ERROR connecting to: ' + urlString + '. ' + err);
-	} else {
-		console.log ('Succeeded connected to: ' + urlString);
-	}
-});
-
-fs.readdir('./blacklist', function (err, folders) {
-	if(err) {
-		return console.log(err);
-	}
-	folders.forEach(function (folder) {
-		var category = folder.replace(folder.charAt(0), folder.charAt(0).toUpperCase());
-
-		// Read domains file
-		fs.readFile('./blacklist/' + folder + '/domains', 'utf8', function (err, data) {
-			if(err) {
-				return console.log(err);
-			}
-			blacklist[category] = data.split('\n');
-		});
-
-		// Read url file (only take host)
-		fs.readFile('./blacklist/' + folder + '/urls', 'utf8', function (err, data) {
-			if(err) {
-				return console.log(err);
-			}
-			var splittedList = data.split('\n');
-			splittedList.forEach(function (url, index) {
-				var slashIndex = url.indexOf('/');
-				if(slashIndex !== -1) {
-					url = url.substr(0, slashIndex);
-				}
-				splittedList[index] = url;
-			});
-			blacklist[category] = _.union(blacklist[category], _.uniq(splittedList, true));
-		});
-	});
-})
 
 var server = http.createServer(app);
 
@@ -86,133 +15,133 @@ server.listen(port, function() {
 });
 
 //CORS middleware
-var allowCrossDomain = function(req, res, next) {
+/*var allowCrossDomain = function(req, res, next) {
     res.header('Access-Control-Allow-Origin', 'http://localhost');
     res.header('Access-Control-Allow-Methods', 'GET');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
 
     next();
 }
-app.use(allowCrossDomain);
+app.use(allowCrossDomain);*/
 app.use(express.bodyParser());
+app.use(express.static(__dirname + '/views'));
+app.set('view engine', 'ejs');
 
-app.get('/query/:domain?', function (req, res) {
-	if(req.params.domain) {
-		res.setHeader('Content-Type', 'application/json');
-		var blacklisted = false;
-		var BreakException= {};
-		try {
-			Object.keys(blacklist).forEach(function (category) {
-				if(category === 'Search_engines') {
-					if(blacklist[category].indexOf(req.params.domain.replace(/(\w+)\.(\w+)$/, '$1')) !== -1) {
-						throw BreakException;
-					}
-				} else {
-					if(blacklist[category].indexOf(req.params.domain) !== -1) {
-						throw BreakException;
-					}
-				}
-			});
-		} catch(e) {
-			if (e !== BreakException) {
-				throw e;
-			} else {
-				blacklisted = true;
-			}
+app.get('/index', function (req, res) {
+	res.render('index.ejs');
+});
+
+app.get('/create1MList', function (req, res) {
+	createList('blacklist1M.list', 1000000, false);
+	res.setHeader('Content-Type', 'application/json');
+	res.end(JSON.stringify([]));
+});
+
+app.get('/create10MList', function (req, res) {
+	createList('blacklist10M.list', 10000000, false);
+	res.setHeader('Content-Type', 'application/json');
+	res.end(JSON.stringify([]));
+});
+
+app.get('/create1MSortedList', function (req, res) {
+	createList('blacklist1MSorted.list', 1000000, true);
+	res.setHeader('Content-Type', 'application/json');
+	res.end(JSON.stringify([]));
+});
+
+app.get('/create10MSortedList', function (req, res) {
+	createList('blacklist10MSorted.list', 10000000, true);
+	res.setHeader('Content-Type', 'application/json');
+	res.end(JSON.stringify([]));
+});
+
+function createList(fileName, nbElements, sorted) {
+	array = new Array(nbElements);
+	for (var i = 0; i < 1; i++) {
+		for (var j = 0; j < array.length; j++) {
+			array[j] = createHexaId();
 		}
-		res.end(JSON.stringify(blacklisted));
-	} else {
-		res.setHeader('Content-Type', 'application/json');
-		res.end(JSON.stringify(false));
-	}
-});
-
-app.get('/search/:searchString?', function (req, res) {
-	if(req.params.searchString) {
-		var searchString = decodeURI(req.params.searchString);
-		var matches = new Object();
-
-		Object.keys(blacklist).forEach(function (category) {
-			blacklist[category].forEach(function (host) {
-				if(host.indexOf(searchString) > -1) {
-					if(!matches[category]) {
-						matches[category] = [];
-					}
-					matches[category].push(host);
-				}
-			});
+		if(sorted) {
+			array.sort();
+		}
+		fs.writeFile(fileName, array.join('\n'), function(err) {
+			if(err) {
+		 		return console.log(err);
+			}
 		});
-
-		res.setHeader('Content-Type', 'application/json');
-		res.end(JSON.stringify(matches));
-	} else {
-		res.setHeader('Content-Type', 'application/json');
-		res.end(JSON.stringify([]));
 	}
-});
+	delete array
+	
+}
 
-var Schema = mongoose.Schema;
+function randomInt(low, high) {
+	return Math.floor(Math.random() * (high - low) + low);
+}
 
-var statsSchema = new Schema({
-	installed: { type: Date, default: Date.now },
-	uninstalled: { type: Date },
-	useTime: {
-		nbUsedTimes: Number,
-		averageUseTime: Number
-	},
-	preferences: {
-		filtering: String,
+function randomIntInc(low, high) {
+	return Math.floor(Math.random() * (high - low + 1) + low);
+}
 
+function createHexaId() {
+	var values = new Array(16);
+	for (var i = 0; i < values.length; i++) {
+		values[i] = randomIntInc(0, 15).toString(16);
 	}
-});
+	return values.join('');
+}
 
-var Stats = mongoose.model('Stats', statsSchema);
 
-app.get('/stats/init', function (req, res) {
-	var stats = new Stats();
-	stats.save(function (err, stats) {
-		if (err) return console.error(err);
-		res.setHeader('Content-Type', 'application/json');
-		res.end(JSON.stringify(stats.id));
+var time = 0;
+var count = 0;
+
+function readBlacklist(listName, loops, subloops, sorted, res) {
+	//blacklist = new Array();
+	var blacklist;
+	fs.readFile(listName + '.list', 'utf8', function (err, data) {
+		if(err) {
+			return console.log(err);
+		}
+		blacklist = data.split('\n');
+		benchmark(blacklist, loops, subloops, sorted);
+		res.setHeader('Content-Type', 'text/plain');
+		res.end('Total time: ' + time + 'ms' + '\n' + 'Mean time: ' + time/count + 'ms');
+		//delete blacklist;
 	});
+}
+
+app.get('/benchmark1M', function (req, res) {
+	readBlacklist('blacklist1M', 10, 100, false, res);
 });
 
-app.post('/stats/send', function (req, res) {
-	if(isStatsReqComplete(req)) {
-		Stats.findById(req.body.statsId, function (err, stats) {
-			if (err) return console.error(err);
+app.get('/benchmark10M', function (req, res) {
+	readBlacklist('blacklist10M', 10, 10, false, res);
+});
 
-			stats.useTime.nbUsedTimes = req.body.useTime.nbUsedTimes;
-			stats.useTime.averageUseTime = req.body.useTime.averageUseTime;
-			stats.preferences.filtering = req.body.preferences.filtering;
+app.get('/benchmark1MSorted', function (req, res) {
+	readBlacklist('blacklist1MSorted', 1000, 1000, true, res);
+});
 
-			stats.save(function (err) {
-				if(err) return console.error(err);
-			});
-			res.end();
-		});
+app.get('/benchmark10MSorted', function (req, res) {
+	readBlacklist('blacklist10MSorted', 100, 1000, true, res);
+});
+
+function benchmark(blacklist, loops, subloops, sorted) {
+	time = 0;
+	count = 0;
+	for (var i = 0; i < loops; i++) {
+		for (var j = 0; j < subloops - 1; j++) {
+			searchIndex(blacklist, createHexaId(), sorted);
+		}
+		searchIndex(blacklist, blacklist[randomInt(0, blacklist.length)], sorted);
 	}
-});
+}
 
-app.get('/stats/uninstalled/:statsId?', function (req, res) {
-	if(req.params.statsId) {
-		Stats.findById(req.params.statsId, function (err, stats) {
-			if (err) return console.error(err);
+function searchIndex(blacklist, id, sorted) {
+	var hrstart = process.hrtime();
+	_.indexOf(blacklist, id, sorted)
+	var hrend = process.hrtime(hrstart);
+	time += hrend[1]/1000000
+	count++;
 
-			stats.uninstalled = Date.now();
-
-			stats.save(function (err) {
-				if(err) return console.error(err);
-			})
-		});
-	}
-});
-
-function isStatsReqComplete(req) {
-	return req.body.statsId !== undefined
-		&& req.body.useTime !== undefined
-		&& req.body.useTime.nbUsedTimes !== undefined
-		&& req.body.useTime.averageUseTime !== undefined
-		&& req.body.preferences !== undefined
-		&& req.body.preferences.filtering !== undefined;
+	return 0;
 }

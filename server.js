@@ -42,12 +42,24 @@ app.get('/create1MList', function (req, res) {
 });
 
 app.get('/create10MListDb', function (req, res) {
+	count = 0;
 	MongoClient.connect(url, function(err, db) {
 		assert.equal(null, err);
-		createListToDb(db, 'blacklist10M', 10000000, function () {
+		createListToDb(db, 'blacklist10M', 5000000, function () {
 			db.close();
-			res.setHeader('Content-Type', 'application/json');
-			res.end(JSON.stringify([]));
+			res.setHeader('Content-Type', 'text/plain');
+			res.end('10M elements inserted in Db\nCount = ' + count);
+		});
+	});
+});
+
+app.get('/createDbIndex', function (req, res) {
+	MongoClient.connect(url, function(err, db) {
+		assert.equal(null, err);
+		createDbIndex(db, 'blacklist10M', function(indexName) {
+			db.close();
+			res.setHeader('Content-Type', 'text/plain');
+			res.end('Created following index: ' + indexName);
 		});
 	});
 });
@@ -55,8 +67,11 @@ app.get('/create10MListDb', function (req, res) {
 app.get('/countDb', function (req, res) {
 	MongoClient.connect(url, function(err, db) {
 		assert.equal(null, err);
-		countDocuments(db, 'blacklist10M', res, function() {
+		countDocuments(db, 'blacklist10M', function(count) {
 			db.close();
+			console.log('Nb of docs: ' + count);
+			res.setHeader('Content-Type', 'text/plain');
+			res.end('Nb of docs: ' + count);
 		});
 	});
 });
@@ -65,6 +80,28 @@ app.get('/emptyDb', function (req, res) {
 	MongoClient.connect(url, function(err, db) {
 		assert.equal(null, err);
 		emptyDb(db, 'blacklist10M', function() {
+			db.close();
+			res.setHeader('Content-Type', 'application/json');
+			res.end(JSON.stringify([]));
+		});
+	});
+});
+
+app.get('/dropDb', function (req, res) {
+	MongoClient.connect(url, function(err, db) {
+		assert.equal(null, err);
+		dropDb(db, 'blacklist10M', function() {
+			db.close();
+			res.setHeader('Content-Type', 'application/json');
+			res.end(JSON.stringify([]));
+		});
+	});
+});
+
+app.get('/dropAllDb', function (req, res) {
+	MongoClient.connect(url, function(err, db) {
+		assert.equal(null, err);
+		dropAllDb(db, function() {
 			db.close();
 			res.setHeader('Content-Type', 'application/json');
 			res.end(JSON.stringify([]));
@@ -109,35 +146,57 @@ function createList(fileName, nbElements, sorted) {
 }
 
 function createListToDb(db, dbName, nbElements, callback) {
-	var ids = new Array(1000);
-	for (var i = 0; i < nbElements/1000; i++) {
-		for (var j = 0; j < 1000; j++) {
-			ids[j] = {'id': createHexaId()};
-		}
-		var finalLoop = i == Math.floor(nbElements/1000);
-		insertDocuments(db, dbName, ids, callback, finalLoop);
-	}
-}
-
-function insertDocuments(db, dbName, ids, callback, finalLoop) {
-	db.collection(dbName).insertMany(ids, function(err, result) {
-		assert.equal(err, null);
-		if (finalLoop) {
+	insertDocuments(db, dbName, function (){
+		count++;
+		if (count < Math.floor(nbElements/1000)) {
+			createListToDb(db, dbName, nbElements, callback);
+		} else {
 			callback();
 		}
+	});
+}
+
+function insertDocuments(db, dbName, callback) {
+	ids = new Array(1000);
+	for (var i = 0; i < 1000; i++) {
+		ids[i] = {'id': createHexaId()};
+	}
+	db.collection(dbName).insertMany(ids, function (err, result) {
+		assert.equal(err, null);
+		delete ids;
+		callback();
   	});
 };
 
-function countDocuments(db, dbName, res, callback) {
-	var cursor = db.collection(dbName).count(function(err, count) {
-		res.setHeader('Content-Type', 'text/plain');
-		res.end('Nb of docs: ' + count);
-		console.log('Nb of docs: ' + count);
+function createDbIndex(db, dbName, callback) {
+	db.collection(dbName).createIndex({'id': 1}, null, function (err, indexName) {
+		callback(indexName);
+	});
+};
+
+function countDocuments(db, dbName, callback) {
+	var cursor = db.collection(dbName).find().count(function (err, count) {
+		callback(count);
 	});
 };
 
 function emptyDb(db, dbName, callback) {
-	db.collection(dbName).deleteMany({}, function(err, results) {
+	db.collection(dbName).deleteMany({}, function (err, results) {
+		assert.equal(err, null);
+		callback();
+	});
+}
+
+function dropDb(db, dbName, callback) {
+	db.collection(dbName).drop(function (err, results) {
+		assert.equal(err, null);
+		callback();
+	});
+}
+
+function dropAllDb(db, callback) {
+	db.dropDatabase(function (err, results) {
+		assert.equal(err, null);
 		callback();
 	});
 }
@@ -190,7 +249,11 @@ app.get('/benchmark10MDb', function (req, res) {
 	count = 0;
 	MongoClient.connect(url, function(err, db) {
 		assert.equal(null, err);
-		benchmarkDb(db, res);
+		benchmarkDb(db, function() {
+			res.setHeader('Content-Type', 'text/plain');
+			res.end('Total time: ' + time + 'ms' + '\n' + 'Mean time: ' + time/count + 'ms');
+			console.log('Total time: ' + time + 'ms' + '\n' + 'Mean time: ' + time/count + 'ms');
+		});
 	});
 });
 
@@ -223,7 +286,7 @@ function searchIndex(blacklist, id, sorted) {
 	return 0;
 }
 
-function benchmarkDb(db, res) {
+function benchmarkDb(db, callback) {
 	var id = createHexaId();
 	var hrstart = process.hrtime();
 	findInBlacklist(db, 'backlist10M', id, function() {
@@ -231,12 +294,10 @@ function benchmarkDb(db, res) {
 		time += hrend[1]/1000000
 		count++;
 		if (count < 1000000) {
-			benchmarkDb(db, res);
+			benchmarkDb(db, callback);
 		} else {
 			db.close();
-			res.setHeader('Content-Type', 'text/plain');
-			res.end('Total time: ' + time + 'ms' + '\n' + 'Mean time: ' + time/count + 'ms');
-			console.log('Total time: ' + time + 'ms' + '\n' + 'Mean time: ' + time/count + 'ms');
+			callback();
 		}
 	});
 }

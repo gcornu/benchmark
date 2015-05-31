@@ -46,21 +46,19 @@ app.get('/create10MListDb', function (req, res) {
 		assert.equal(null, err);
 		createListToDb(db, 'blacklist10M', 10000000, function () {
 			db.close();
+			res.setHeader('Content-Type', 'application/json');
+			res.end(JSON.stringify([]));
 		});
 	});
-	res.setHeader('Content-Type', 'application/json');
-	res.end(JSON.stringify([]));
 });
 
 app.get('/countDb', function (req, res) {
 	MongoClient.connect(url, function(err, db) {
 		assert.equal(null, err);
-		countDocuments(db, 'blacklist10M', function() {
+		countDocuments(db, 'blacklist10M', res, function() {
 			db.close();
 		});
 	});
-	res.setHeader('Content-Type', 'application/json');
-	res.end(JSON.stringify([]));
 });
 
 app.get('/emptyDb', function (req, res) {
@@ -68,10 +66,10 @@ app.get('/emptyDb', function (req, res) {
 		assert.equal(null, err);
 		emptyDb(db, 'blacklist10M', function() {
 			db.close();
+			res.setHeader('Content-Type', 'application/json');
+			res.end(JSON.stringify([]));
 		});
 	});
-	res.setHeader('Content-Type', 'application/json');
-	res.end(JSON.stringify([]));
 });
 
 app.get('/create10MList', function (req, res) {
@@ -130,8 +128,10 @@ function insertDocuments(db, dbName, ids, callback, finalLoop) {
   	});
 };
 
-function countDocuments(db, dbName, callback) {
+function countDocuments(db, dbName, res, callback) {
 	var cursor = db.collection(dbName).count(function(err, count) {
+		res.setHeader('Content-Type', 'text/plain');
+		res.end('Nb of docs: ' + count);
 		console.log('Nb of docs: ' + count);
 	});
 };
@@ -190,12 +190,8 @@ app.get('/benchmark10MDb', function (req, res) {
 	count = 0;
 	MongoClient.connect(url, function(err, db) {
 		assert.equal(null, err);
-		benchmarkDb(db);
+		benchmarkDb(db, res);
 	});
-	
-
-	res.setHeader('Content-Type', 'text/plain');
-	res.end('Total time: ' + time + 'ms' + '\n' + 'Mean time: ' + time/count + 'ms');
 });
 
 app.get('/benchmark1MSorted', function (req, res) {
@@ -227,7 +223,7 @@ function searchIndex(blacklist, id, sorted) {
 	return 0;
 }
 
-function benchmarkDb(db) {
+function benchmarkDb(db, res) {
 	var id = createHexaId();
 	var hrstart = process.hrtime();
 	findInBlacklist(db, 'backlist10M', id, function() {
@@ -235,9 +231,11 @@ function benchmarkDb(db) {
 		time += hrend[1]/1000000
 		count++;
 		if (count < 1000000) {
-			benchmarkDb(db);
+			benchmarkDb(db, res);
 		} else {
 			db.close();
+			res.setHeader('Content-Type', 'text/plain');
+			res.end('Total time: ' + time + 'ms' + '\n' + 'Mean time: ' + time/count + 'ms');
 			console.log('Total time: ' + time + 'ms' + '\n' + 'Mean time: ' + time/count + 'ms');
 		}
 	});

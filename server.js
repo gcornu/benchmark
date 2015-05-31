@@ -56,7 +56,7 @@ app.get('/create10MListDb', function (req, res) {
 app.get('/copyDb', function (req, res) {
 	MongoClient.connect(url, function(err, db) {
 		assert.equal(null, err);
-		db.executeDbAdminCommand({
+		db.command({
 			clone: '192.168.0.10:27017'
 		}, function (err, res) {
 			db.close();

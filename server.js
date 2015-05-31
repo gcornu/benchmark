@@ -148,7 +148,7 @@ function createList(fileName, nbElements, sorted) {
 function createListToDb(db, dbName, nbElements, callback) {
 	insertDocuments(db, dbName, function (){
 		count++;
-		if (count < Math.floor(nbElements/1000)) {
+		if (count < Math.floor(nbElements/10000)) {
 			createListToDb(db, dbName, nbElements, callback);
 		} else {
 			callback();
@@ -158,11 +158,11 @@ function createListToDb(db, dbName, nbElements, callback) {
 
 function insertDocuments(db, dbName, callback) {
 	var hrstart = process.hrtime();
-	ids = new Array(1000);
+	ids = new Array(10000);
 	var hrend = process.hrtime(hrstart);
 	console.log('Creating array: ' + hrend[1]/1000000 + 'ms');
 	var hrstart = process.hrtime();
-	for (var i = 0; i < 1000; i++) {
+	for (var i = 0; i < 10000; i++) {
 		ids[i] = {'id': createHexaId()};
 	}
 	var hrend = process.hrtime(hrstart);

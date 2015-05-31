@@ -318,6 +318,8 @@ function searchIndex(blacklist, id, sorted) {
 	return 0;
 }
 
+var nbLoopsBenchmark = 10000;
+
 function benchmarkDb(db, callback) {
 	var id = createHexaId();
 	var hrstart = process.hrtime();
@@ -325,7 +327,10 @@ function benchmarkDb(db, callback) {
 		var hrend = process.hrtime(hrstart);
 		time += hrend[1]/1000000
 		count++;
-		if (count < 1000000) {
+		if (count < nbLoopsBenchmark) {
+			if(Math.floor(count % nbLoopsBenchmark/100) == count % nbLoopsBenchmark/100) {
+				console.log('Benchmark: ' + count % nbLoopsBenchmark/100 + '%');
+			}
 			benchmarkDb(db, callback);
 		} else {
 			db.close();

@@ -157,11 +157,20 @@ function createListToDb(db, dbName, nbElements, callback) {
 }
 
 function insertDocuments(db, dbName, callback) {
+	var hrstart = process.hrtime();
 	ids = new Array(1000);
+	var hrend = process.hrtime(hrstart);
+	console.log('Creating array: ' + hrend[1]/1000000 + 'ms');
+	var hrstart = process.hrtime();
 	for (var i = 0; i < 1000; i++) {
 		ids[i] = {'id': createHexaId()};
 	}
+	var hrend = process.hrtime(hrstart);
+	console.log('Filling array: ' + hrend[1]/1000000 + 'ms');
+	var hrstart = process.hrtime();
 	db.collection(dbName).insertMany(ids, function (err, result) {
+		var hrend = process.hrtime(hrstart);
+		console.log('Inserting elements: ' + hrend[1]/1000000 + 'ms');
 		assert.equal(err, null);
 		delete ids;
 		callback();

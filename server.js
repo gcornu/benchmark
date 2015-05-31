@@ -56,18 +56,23 @@ app.get('/create10MListDb', function (req, res) {
 app.get('/copyDb', function (req, res) {
 	MongoClient.connect(url, function(err, db) {
 		assert.equal(null, err);
-		db.copyDatabase('test', 'test', '192.168.0.10:27017', function () {
+		db.runDbAdminCommand({
+			copydb: 1,
+			fromdb: 'test',
+			todb: 'test',
+			fromhost: '192.168.0.10:27017'
+		}, function () {
 			db.close();
 			res.setHeader('Content-Type', 'text/plain');
-			res.end('Database cloned');
+			res.end('Database copyied');
 		});
 	});
 });
 
 app.get('/createDbIndex', function (req, res) {
-	MongoClient.connect(url, function(err, db) {
+	MongoClient.connect(url, function (err, db) {
 		assert.equal(null, err);
-		createDbIndex(db, 'blacklist10M', function(indexName) {
+		createDbIndex(db, 'blacklist10M', function (indexName) {
 			db.close();
 			res.setHeader('Content-Type', 'text/plain');
 			res.end('Created following index: ' + indexName);

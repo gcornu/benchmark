@@ -57,10 +57,7 @@ app.get('/copyDb', function (req, res) {
 	MongoClient.connect(url, function(err, db) {
 		assert.equal(null, err);
 		db.executeDbAdminCommand({
-			copydb: 1,
-			fromdb: 'test',
-			todb: 'test',
-			fromhost: '192.168.0.10:27017'
+			clone: '192.168.0.10:27017'
 		}, function () {
 			db.close();
 			res.setHeader('Content-Type', 'text/plain');

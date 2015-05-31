@@ -318,7 +318,7 @@ function searchIndex(blacklist, id, sorted) {
 	return 0;
 }
 
-var nbLoopsBenchmark = 10000;
+var nbLoopsBenchmark = 100000;
 
 function benchmarkDb(db, callback) {
 	var id = createHexaId();

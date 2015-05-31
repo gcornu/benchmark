@@ -328,7 +328,7 @@ function benchmarkDb(db, callback) {
 		time += hrend[1]/1000000
 		count++;
 		if (count < nbLoopsBenchmark) {
-			if(Math.floor(count % nbLoopsBenchmark/100) == count % nbLoopsBenchmark/100) {
+			if(Math.floor(count/(nbLoopsBenchmark/100)) == count/(nbLoopsBenchmark/100)) {
 				console.log('Benchmark: ' + count % nbLoopsBenchmark/100 + '%');
 			}
 			benchmarkDb(db, callback);

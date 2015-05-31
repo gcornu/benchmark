@@ -58,8 +58,9 @@ app.get('/copyDb', function (req, res) {
 		assert.equal(null, err);
 		db.executeDbAdminCommand({
 			clone: '192.168.0.10:27017'
-		}, function () {
+		}, function (err, res) {
 			db.close();
+			console.log(err, res);
 			res.setHeader('Content-Type', 'text/plain');
 			res.end('Database copyied');
 		});

@@ -158,23 +158,32 @@ function createListToDb(db, dbName, nbElements, callback) {
 
 function insertDocuments(db, dbName, callback) {
 	var hrstart = process.hrtime();
-	ids = new Array(10000);
+	//ids = new Array(10000);
+	bulk = db.collection(dbName).initializeUnorderedBulkOp();
 	var hrend = process.hrtime(hrstart);
 	console.log('Creating array: ' + hrend[1]/1000000 + 'ms');
 	var hrstart = process.hrtime();
 	for (var i = 0; i < 10000; i++) {
-		ids[i] = {'id': createHexaId()};
+		//ids[i] = {'id': createHexaId()};
+		bulk.insert({'id': createHexaId()});
 	}
 	var hrend = process.hrtime(hrstart);
 	console.log('Filling array: ' + hrend[1]/1000000 + 'ms');
 	var hrstart = process.hrtime();
-	db.collection(dbName).insertMany(ids, function (err, result) {
+	bulk.execute(function (err, result) {
+		var hrend = process.hrtime(hrstart);
+		console.log('Inserting elements: ' + hrend[1]/1000000 + 'ms');
+		assert.equal(err, null);
+		delete bulk;
+		callback();
+  	});
+	/*db.collection(dbName).insertMany(ids, function (err, result) {
 		var hrend = process.hrtime(hrstart);
 		console.log('Inserting elements: ' + hrend[1]/1000000 + 'ms');
 		assert.equal(err, null);
 		delete ids;
 		callback();
-  	});
+  	});*/
 };
 
 function createDbIndex(db, dbName, callback) {

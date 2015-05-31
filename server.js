@@ -329,7 +329,7 @@ function benchmarkDb(db, callback) {
 		count++;
 		if (count < nbLoopsBenchmark) {
 			if(Math.floor(count/(nbLoopsBenchmark/100)) == count/(nbLoopsBenchmark/100)) {
-				console.log('Benchmark: ' + count % nbLoopsBenchmark/100 + '%');
+				console.log('Benchmark: ' + count/(nbLoopsBenchmark/100) + '%');
 			}
 			benchmarkDb(db, callback);
 		} else {
